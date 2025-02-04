@@ -828,3 +828,606 @@ This confirms:
 - **Spread (`...args`)** → Used inside function calls **to expand an array into individual arguments**.
 
 🚀 **Now you can confidently identify them in any JavaScript function!** 🎯 Let me know if you have more questions. 😊
+
+
+
+
+##Debouncing 
+Question i asked=> 
+leetcode 2627 /**
+ * @param {Function} fn
+ * @param {number} t milliseconds
+ * @return {Function}
+ */
+var debounce = function(fn, t) {
+    let id
+    
+    return function(...args) {
+        clearTimeout(id)
+        id =  setTimeout(()=>fn(...args), t)
+        
+    }
+};
+
+/**
+ * const log = debounce(console.log, 100);
+ * log('Hello'); // cancelled
+ * log('Hello'); // cancelled
+ * log('Hello'); // Logged at t=100ms
+ */  is this correct? Also just imagine i have fetchcards async function which makes network call to get results. Tell me how i would exptropolate in this code. i think here * const log = debounce(fetchProducts, 100); will be sent and then log(api endpoint i need to give in argument). Not sure
+
+### ✅ **1. Is Your `debounce` Function Correct?**  
+Yes! Your `debounce` function is **correct** and works as expected. 🎯  
+
+### 🔹 **How It Works:**
+- Every time the **debounced function is called**, it **resets** the `setTimeout` timer.  
+- The function **executes only after `t` milliseconds** have passed **since the last call**.  
+- If another call is made **before `t` milliseconds**, the previous call is **canceled**.
+
+✅ **Your function correctly cancels previous calls and executes only once after inactivity.**  
+
+---
+
+### ✅ **2. How to Use `debounce` with an `async` Function?**
+You **can debounce an asynchronous function** like `fetchProducts`, which makes an API request.  
+
+### 🔹 **Implementation with `fetchProducts`**
+Let's say `fetchProducts(endpoint)` is an **async function** that fetches products from an API.  
+
+#### **Modified Code:**
+```javascript
+/**
+ * @param {Function} fn
+ * @param {number} t milliseconds
+ * @return {Function}
+ */
+var debounce = function(fn, t) {
+    let id;
+    
+    return function(...args) {
+        clearTimeout(id);
+        id = setTimeout(() => fn(...args), t); // Calls `fn` after `t` ms
+    };
+};
+
+// ✅ Example Usage: Debouncing an API Call
+async function fetchProducts(endpoint) {
+    console.log(`Fetching from: ${endpoint} at`, new Date().toISOString());
+    // Simulating an API call
+    const response = await fetch(endpoint);
+    const data = await response.json();
+    console.log("Data received:", data);
+}
+
+const debouncedFetch = debounce(fetchProducts, 1000);
+
+// Simulating user typing a search query
+debouncedFetch("https://api.example.com/products?q=phone"); // Cancelled
+debouncedFetch("https://api.example.com/products?q=phone case"); // Cancelled
+debouncedFetch("https://api.example.com/products?q=phone case red"); // ✅ Only this request is sent after 1s
+```
+
+---
+
+### ✅ **3. Explanation of `debouncedFetch("API_ENDPOINT")`**
+1. `debounce(fetchProducts, 1000)` **wraps `fetchProducts`** inside a debouncer.  
+2. Each call **cancels the previous one** and **resets the timer**.  
+3. Only **the last call** after `t = 1000ms` executes the API request.  
+
+---
+
+### ✅ **4. Why Use Debouncing for API Calls?**
+🔹 **Without Debouncing:**  
+- A user typing `"phone case red"` in a search bar would trigger **3 API requests** (`phone`, `phone case`, `phone case red`).  
+- This **wastes network requests** and **overloads the server**.
+
+🔹 **With Debouncing:**  
+- The function **waits for inactivity** (user stops typing).  
+- **Only the last request** (`phone case red`) is executed **after 1000ms**.  
+- **Saves bandwidth** and **reduces API load**.
+
+---
+
+### 🎯 **Final Takeaways**
+✔ **Your `debounce` function is correct.**  
+✔ Works for **any function**, including **async API calls**.  
+✔ **Use debouncing for search bars, input fields, and live suggestions** to **avoid unnecessary API calls**. 🚀  
+
+🚀 Let me know if you need more clarifications! 🎯🔥
+
+
+
+Below is a modified version of your code that adds a few more asynchronous tasks (a Promise and a setTimeout) to help illustrate how synchronous code, microtasks (like the continuation after an `await` or a `.then()` callback), and macrotasks (like a `setTimeout`) are executed in order:
+
+```javascript
+async function async1() {
+  console.log('async1 start');
+  await async2(); // Execution pauses here and resumes as a microtask later.
+  console.log('async1 end'); // This runs as a microtask.
+}
+
+async function async2() {
+  console.log('async2');
+}
+
+console.log('script start'); // Synchronous
+
+async1(); // Calls async1 (synchronous part of async1 runs immediately)
+
+// A microtask scheduled with Promise.then
+Promise.resolve().then(() => {
+  console.log('promise1');
+});
+
+// A macrotask scheduled with setTimeout
+setTimeout(() => {
+  console.log('setTimeout');
+}, 0);
+
+console.log('script end'); // Synchronous
+```
+
+### What Happens Step-by-Step
+
+1. **Synchronous Phase:**
+   - `console.log('script start');`  
+     **Output:** `script start`
+   - `async1();` is called:
+     - Inside `async1`, it logs:  
+       **Output:** `async1 start`
+     - Then `await async2();` is encountered.
+       - `async2()` is called and logs:  
+         **Output:** `async2`
+       - `async2` returns a resolved promise. Although it’s resolved immediately, the code after `await` (i.e. `console.log('async1 end');`) is **not** executed immediately. Instead, it’s scheduled as a microtask.
+   - `Promise.resolve().then(...)` is called, scheduling its callback as a microtask.
+   - `setTimeout(..., 0)` schedules its callback as a **macrotask**.
+   - `console.log('script end');` executes:  
+     **Output:** `script end`
+
+2. **Microtasks Phase (processed after the synchronous code completes):**
+   - The microtask queued by the `await` in `async1` executes, logging:  
+     **Output:** `async1 end`
+   - Then the microtask from `Promise.resolve().then(...)` executes, logging:  
+     **Output:** `promise1`
+
+3. **Macrotasks Phase:**
+   - Finally, the callback from `setTimeout` executes, logging:  
+     **Output:** `setTimeout`
+
+### Expected Output Order
+
+Thus, when you run the modified code, the output will be:
+
+```
+script start
+async1 start
+async2
+script end
+async1 end
+promise1
+setTimeout
+```
+
+### Explanation Recap
+
+- **Synchronous code** runs immediately in the order it is written.
+- **Microtasks** (such as the continuation after `await` and Promise callbacks) are executed after all synchronous code has completed.
+- **Macrotasks** (such as those scheduled with `setTimeout`) run after the microtasks are finished.
+
+This modified code helps you see clearly how JavaScript processes the different types of tasks in its event loop.
+
+
+
+
+
+
+Sure! Let's go through your `deepEqual` function **line by line** and understand its logic.
+
+---
+
+### **Function Signature:**
+```js
+/**
+ * @param {*} valueA
+ * @param {*} valueB
+ * @return {boolean}
+ */
+export default function deepEqual(valueA, valueB) {
+```
+- This function **compares two values deeply** to determine if they are equal.
+- It takes in **two values (`valueA` and `valueB`)** of any type (`*`).
+- It returns a **boolean (`true` or `false`)** indicating whether the values are deeply equal.
+
+---
+
+### **Step 1: Handle `null` values**
+```js
+  if (valueA === null ||  valueB === null) {
+    return valueA === valueB;
+  }
+```
+- If either `valueA` or `valueB` is `null`, the function checks if **both** are `null`.
+- If both are `null`, return `true` (since `null === null`).
+- If only one of them is `null`, return `false` (since `null !== anything else`).
+- ✅ **Fix:** `typeof valueA !== "object"` is not enough because `typeof null` is `"object"`, so this check ensures `null` is handled separately.
+
+---
+
+### **Step 2: Check for Type Mismatch**
+```js
+  if (typeof valueA !== typeof valueB) {
+    return false;
+  }
+```
+- If the two values have **different types**, they **cannot** be equal, so return `false`.
+- ✅ **Fix:** This prevents unnecessary comparisons when `valueA` and `valueB` are fundamentally different (e.g., `5` vs `"5"`).
+
+---
+
+### **Step 3: Handle Primitive Data Types**
+```js
+  if (typeof valueA !== "object") {
+    return valueA === valueB;
+  }
+```
+- If `valueA` is **not an object** (meaning it is a **primitive type** like `number`, `string`, `boolean`, `undefined`, `symbol`, or `bigint`), we simply use **strict equality (`===`)**.
+- **Example Cases:**
+  ```js
+  deepEqual(10, 10); // true
+  deepEqual(10, "10"); // false
+  deepEqual(true, true); // true
+  deepEqual(false, 0); // false
+  ```
+- **Why?** Since primitives have no nested properties, we can compare them directly.
+
+---
+
+### **Step 4: Distinguishing Between Arrays and Objects**
+```js
+  if (Array.isArray(valueA) && Array.isArray(valueB)) {
+```
+- This checks **if both values are arrays**.
+- If both are arrays, we need to compare them element by element.
+
+---
+
+### **Step 5: Compare Arrays**
+```js
+    if (valueA.length !== valueB.length) {
+      return false;
+    } else {
+      for (let i = 0; i < valueA.length; i++) {
+        if (!deepEqual(valueA[i], valueB[i])) {
+          return false;
+        }
+      }
+    }
+```
+- First, we check if **the lengths of both arrays are different**.
+  - If so, return `false` (since they can’t be equal if they have different numbers of elements).
+- Then, we loop through each element of the arrays:
+  - If **any corresponding elements are not deeply equal**, return `false`.
+- If the loop completes, it means all elements match, so the function **proceeds**.
+
+---
+
+### **Step 6: Compare Objects**
+```js
+  } else if (!Array.isArray(valueA) && !Array.isArray(valueB)) {
+```
+- If **both values are not arrays**, they must be **plain objects**.
+- Now, we need to check if both objects have **the same keys and values**.
+
+```js
+    if (Object.keys(valueA).length !== Object.keys(valueB).length) {
+      return false;
+    } else {
+      for (let key in valueA) {
+        if (!deepEqual(valueA[key], valueB[key])) {
+          return false;
+        }
+      }
+    }
+```
+- **Step 1:** Compare the number of keys:
+  - If objects have a **different number of keys**, they **cannot be equal**, so return `false`.
+- **Step 2:** Loop through each key in `valueA`:
+  - Recursively call `deepEqual(valueA[key], valueB[key])` to **deep compare values**.
+  - If **any value mismatch is found**, return `false`.
+
+---
+
+### **Step 7: Handle Mismatched Object vs. Array Case**
+```js
+  } else {
+    return false;
+  }
+```
+- If one is an **array** and the other is an **object**, return `false` (they are different data structures).
+
+---
+
+### **Step 8: Return `true` if No Mismatches Were Found**
+```js
+  return true;
+}
+```
+- If all the above checks pass, it means `valueA` and `valueB` are **deeply equal**, so return `true`.
+
+---
+
+## **Summary of Function Logic**
+1. **Handles `null` separately** because `typeof null === "object"` in JavaScript.
+2. **Returns `false` if types don’t match**.
+3. **Handles primitives directly** using `===`.
+4. **Checks for arrays** and compares their elements recursively.
+5. **Checks for objects** by ensuring:
+   - Same number of keys.
+   - Each key’s value is deeply equal.
+6. **Ensures objects and arrays are not compared against each other**.
+7. **Returns `true` if all checks pass**.
+
+---
+
+## **Example Test Cases**
+```js
+console.log(deepEqual(42, 42)); // true
+console.log(deepEqual(42, "42")); // false
+console.log(deepEqual(null, null)); // true
+console.log(deepEqual(null, undefined)); // false
+console.log(deepEqual([1, 2, 3], [1, 2, 3])); // true
+console.log(deepEqual([1, 2], [1, 2, 3])); // false
+console.log(deepEqual({ a: 1, b: 2 }, { a: 1, b: 2 })); // true
+console.log(deepEqual({ a: 1, b: 2 }, { a: 1, c: 2 })); // false
+console.log(deepEqual({ a: 1, b: [2, 3] }, { a: 1, b: [2, 3] })); // true
+console.log(deepEqual({ a: { b: { c: 1 } } }, { a: { b: { c: 1 } } })); // true
+console.log(deepEqual({ a: { b: { c: 1 } } }, { a: { b: { c: 2 } } })); // false
+```
+
+---
+
+## **Suggested Improvements**
+Your function is **mostly correct** but can be improved:
+✅ **Use `Object.prototype.hasOwnProperty.call(valueB, key)`**  
+   - Prevents checking inherited properties.  
+✅ **Avoid unnecessary `else` statements**  
+   - `return` statements automatically stop execution.  
+✅ **Ensure objects with `undefined` values are handled properly**  
+   - Example: `{ a: undefined }` vs. `{}`.
+
+##Final Code for Deep Equal 
+
+```
+/**
+ * @param {*} valueA
+ * @param {*} valueB
+ * @return {boolean}
+ */
+export default function deepEqual(valueA, valueB) {
+  // if one of them is null other has to null else return false
+  if (valueA === null ||  valueB === null) {
+    return valueA === valueB;
+  }
+
+  if (typeof valueA !== typeof valueB) {
+    return false;
+  }
+
+  if (typeof valueA !== "object") {
+    //primitive datatye checked
+    return valueA === valueB;
+  }
+
+  //now check non-primitive datatype like array and object
+
+  if (Array.isArray(valueA) && Array.isArray(valueB)) {
+    if (valueA.length !== valueB.length) {
+      return false;
+    } else {
+      for (let i = 0; i < valueA.length; i++) {
+        if (!deepEqual(valueA[i], valueB[i])) {
+          return false;
+        }
+      }
+    }
+  } else if (!Array.isArray(valueA) && !Array.isArray(valueB)) {
+    //object
+    if (Object.keys(valueA).length !== Object.keys(valueB).length) {
+      return false;
+    } else {
+      for (let key in valueA) {
+        if (!deepEqual(valueA[key], valueB[key])) {
+          return false;
+        }
+      }
+    }
+  } else {
+    return false;
+  }
+  return true
+} 
+
+```
+
+
+
+
+### **1. Constructor Function vs Normal Function vs Class in JavaScript**
+JavaScript has multiple ways to create objects and structure code. Let’s break down the differences between **constructor functions**, **normal functions**, and **classes**, along with their syntax and real-world usage.
+
+---
+
+## **1. Constructor Function**
+A **constructor function** is a special function that is used to create objects. It follows a naming convention where the function name starts with a capital letter.
+
+### **Syntax:**
+```javascript
+function Person(name, age) {
+    this.name = name;
+    this.age = age;
+}
+
+// Adding a method to prototype
+Person.prototype.greet = function() {
+    return `Hello, my name is ${this.name}`;
+};
+
+// Creating objects
+const person1 = new Person("Alice", 25);
+console.log(person1.greet()); // Output: "Hello, my name is Alice"
+```
+---
+### **Key Points:**
+✔ Used to create multiple objects with the same properties and methods.  
+✔ Uses the `new` keyword to create instances.  
+✔ Methods should be added to the prototype to save memory.  
+✔ Before ES6, this was the standard way to create objects in JavaScript.
+
+---
+### **Real-World Use Case:**
+- Used in older JavaScript codebases before ES6.
+- Used for creating reusable object templates in **older browsers that don’t support classes**.
+
+---
+
+## **2. Normal Function**
+A **normal function** is just a standard JavaScript function. It does not create objects like a constructor function unless explicitly used with `new`.
+
+### **Syntax:**
+```javascript
+function add(a, b) {
+    return a + b;
+}
+
+const result = add(5, 10);
+console.log(result); // Output: 15
+```
+---
+### **Key Points:**
+✔ Does **not** use `new` for instantiation.  
+✔ Can return values directly without modifying `this`.  
+✔ Used for general-purpose logic like calculations, event handling, etc.
+
+---
+### **Real-World Use Case:**
+- Used for utility functions (e.g., `Math.max()`).
+- Used in event handlers, API calls, and callback functions.
+
+---
+
+## **3. ES6 Class**
+A **class** is a blueprint for creating objects, introduced in ES6. It provides a more structured way to define objects and methods.
+
+### **Syntax:**
+```javascript
+class Person {
+    constructor(name, age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    greet() {
+        return `Hello, my name is ${this.name}`;
+    }
+}
+
+// Creating objects
+const person2 = new Person("Bob", 30);
+console.log(person2.greet()); // Output: "Hello, my name is Bob"
+```
+---
+### **Key Points:**
+✔ Uses the `class` keyword, making it **more readable** than constructor functions.  
+✔ Uses `constructor()` to initialize properties.  
+✔ Methods are automatically added to the prototype (no need for `.prototype`).  
+✔ Supports **inheritance** using `extends` (OOP principle).  
+
+---
+### **Real-World Use Case:**
+- **Modern JavaScript applications use classes** for structuring large-scale projects.
+- Used in **React.js, Node.js, and TypeScript** for building components and backend logic.
+
+---
+
+## **Comparison Table**
+| Feature              | Constructor Function | Normal Function | Class (ES6) |
+|----------------------|----------------------|----------------|-------------|
+| Object Creation     | ✅ Yes (`new` keyword) | ❌ No | ✅ Yes (`new` keyword) |
+| Prototypes Used     | ✅ Yes | ❌ No | ✅ Yes |
+| Readability         | ❌ Less readable | ✅ Clear and simple | ✅ More structured |
+| Inheritance Support | ⚠️ Complex (via `Object.create`) | ❌ No | ✅ Yes (`extends`) |
+| Modern Usage        | ⚠️ Older codebases | ✅ General-purpose | ✅ Modern OOP |
+
+---
+
+## **Which One Should You Use?**
+- ✅ **Use Classes** for modern applications (React, Node.js, TypeScript).  
+- ✅ **Use Normal Functions** for utility tasks (mathematical operations, event handlers).  
+- ⚠ **Constructor Functions** are outdated but still found in legacy code.
+
+Would you like an example comparing inheritance in constructor functions vs classes? 🚀
+
+
+Yes, you can add methods inside a **constructor function** in two ways:
+
+### **1. Using `prototype` (Shared Across All Instances)**
+When you define a method on the prototype, it is shared among all instances of the constructor function. This is **memory-efficient** because the method is not duplicated for each object.
+
+#### **Example:**
+```javascript
+function Person(name) {
+    this.name = name;
+}
+
+// Adding method using prototype
+Person.prototype.greet = function() {
+    return `Hello, my name is ${this.name}`;
+};
+
+const p1 = new Person("Alice");
+const p2 = new Person("Bob");
+
+console.log(p1.greet()); // "Hello, my name is Alice"
+console.log(p2.greet()); // "Hello, my name is Bob"
+
+// Checking if both instances share the same method
+console.log(p1.greet === p2.greet); // true (same function reference)
+```
+✔ **Advantage:** Saves memory because `greet` is stored in `Person.prototype`, not duplicated per object.  
+⚠ **Disadvantage:** If `greet` is modified, it affects all instances.
+
+---
+
+### **2. Defining Methods Inside Constructor (Instance-Specific)**
+If you define a method **inside the constructor function**, every object gets its own copy of the method. This method is **limited to that instance only** and **not shared** across multiple objects.
+
+#### **Example:**
+```javascript
+function Person(name) {
+    this.name = name;
+
+    // Method inside the constructor (instance-specific)
+    this.greet = function() {
+        return `Hello, my name is ${this.name}`;
+    };
+}
+
+const p1 = new Person("Alice");
+const p2 = new Person("Bob");
+
+console.log(p1.greet()); // "Hello, my name is Alice"
+console.log(p2.greet()); // "Hello, my name is Bob"
+
+// Checking if both instances have different function references
+console.log(p1.greet === p2.greet); // false (different function instances)
+```
+✔ **Advantage:** Each instance has its own version of `greet`, so modifying one instance's method won't affect others.  
+⚠ **Disadvantage:** Takes more memory because each object creates a separate copy of the method.
+
+---
+
+### **When to Use Each Approach?**
+✅ Use **prototype methods** when the method logic is the same for all instances (memory-efficient).  
+✅ Use **instance-specific methods** when the method logic might change per object (more isolated).  
+
+For large-scale applications, **prototype-based methods are preferred** to optimize memory usage. Would you like an example showing real-world usage? 🚀
