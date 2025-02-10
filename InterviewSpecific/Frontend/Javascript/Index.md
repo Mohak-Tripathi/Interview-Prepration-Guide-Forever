@@ -935,6 +935,266 @@ debouncedFetch("https://api.example.com/products?q=phone case red"); // ✅ Only
 
 🚀 Let me know if you need more clarifications! 🎯🔥
 
+hen implementing functions like `debounce` or `throttle` in JavaScript, it's crucial to manage the `this` context correctly, especially when these functions are methods within objects or classes.sing `func(...args)` can lead to the loss of the intended `this` context, which is why methods like `Function.prototype.apply()` or `Function.prototype.call()` are preferred.
+**Understanding `this` in JavaScript:**
+
+n JavaScript, the value of `this` is determined by how a function is called:
+- **Global Context:** hen a function is called in the global scope, `this` refers to the global object (`window` in browsers).
+- **Object Method:** hen a function is called as a method of an object, `this` refers to the object the method is called on.
+- **Constructor Function:** hen a function is used as a constructor (with the `new` keyword), `this` refers to the newly created instance.
+- **Event Handlers:** n event handlers, `this` refers to the element that received the event.
+**Using `apply()` and `call()`:**
+
+oth `apply()` and `call()` allow you to specify the value of `this` when invoking a function:
+- **`func.apply(thisArg, argsArray)`:** alls `func` with `this` set to `thisArg` and arguments provided as an array (`argsArray`).
+- **`func.call(thisArg, arg1, arg2, ...)`:** alls `func` with `this` set to `thisArg` and arguments provided individually.
+y using `apply()` or `call()`, you ensure that the function's `this` context is explicitly set, preventing unintended loss of context.
+**Example: Debounce Function Implementation:**
+
+ere's how you can implement a `debounce` function that preserves the `this` context:
+``javascript
+function debounce(fn, delay) {
+  let timeoutId;
+
+  return function(...args) {
+    const context = this;
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn.apply(context, args), delay);
+  };
+}
+```
+**Explanation:**
+
+- **`fn.apply(context, args)`:** y using `apply()`, `fn` is invoked with `this` set to `context` (which is the `this` value of the debounced function) and the arguments spread from `args`.
+**Testing Debounced Functions with Jest:**
+
+hen testing debounced functions using Jest, especially with timer-related code, you might encounter issues like tests timing out.est provides utilities to handle such scenarios:
+1. **Use Fake Timers:**
+
+   est's fake timers allow you to control the passage of time in your tests:
+   ``javascript
+   jest.useFakeTimers();
+   ```
+2. **Advance Timers:**
+
+   fter triggering the debounced function in your test, you can advance the timers to simulate the passage of time:
+   ``javascript
+   jest.advanceTimersByTime(delay);
+   ```
+3. **Test Example:**
+
+   ``javascript
+   test('debounced function is called after delay', () => {
+     const mockFn = jest.fn();
+     const debouncedFn = debounce(mockFn, 1000);
+
+     debouncedFn();
+
+     // At this point, the function should not have been called yet
+     expect(mockFn).not.toHaveBeenCalled();
+
+     // Fast-forward time
+     jest.advanceTimersByTime(1000);
+
+     // Now the function should have been called
+     expect(mockFn).toHaveBeenCalled();
+   });
+   ```
+   his approach ensures that your tests don't actually wait for real time to pass, making them faster and more reliable.
+**Common Issues:**
+
+- **Test Timeouts:** f a test exceeds the default timeout (usually 5000ms), you can increase it using `jest.setTimeout(newTimeout)`.
+- **Infinite Loops with `runAllTimers()`:** sing `jest.runAllTimers()` with functions that recursively set timers can lead to infinite loops. In such cases, prefer `jest.runOnlyPendingTimers()` or `jest.advanceTimersByTime()`.
+or more detailed information, refer to Jest's official documentation on [Timer Mocks](https://jestjs.io/docs/timer-mocks).
+y carefully managing the `this` context and utilizing Jest's timer utilities, you can implement and test debounced functions effectively.
+
+
+
+No, the `this` keyword inside the `debounce` function does **not** refer to `debouncedFetch`.  
+
+### Explanation:  
+When you call:  
+```javascript
+debouncedFetch("https://api.example.com/products?q=phone");
+```
+The function returned by `debounce(fetchProducts, 1000)` is being executed. The `this` value inside that function depends on **how the function is called**, not on the variable (`debouncedFetch`) that stores it.
+
+### What does `this` refer to?  
+1. **If `debouncedFetch` is called in a global context (regular function call):**  
+   ```javascript
+   debouncedFetch("https://api.example.com/products?q=phone");
+   ```
+   - Here, `this` refers to the **global object** (`window` in browsers, `global` in Node.js) **or** `undefined` in strict mode.
+
+2. **If `debouncedFetch` is called as a method of an object:**  
+   ```javascript
+   const obj = {
+     debouncedFetch: debounce(fetchProducts, 1000)
+   };
+
+   obj.debouncedFetch("https://api.example.com/products?q=phone");
+   ```
+   - Here, `this` inside `debouncedFetch` will refer to `obj`.
+
+### Why does `context = this` matter?  
+In the `debounce` implementation:  
+```javascript
+return function(...args) {
+    const context = this; // Captures `this` from the calling context
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn.apply(context, args), delay);
+};
+```
+- `context = this` captures the **this value from the function call**.  
+- Later, when `setTimeout` executes, `fn.apply(context, args)` ensures `fn` runs with the same `this` as the original call.  
+
+### Example to test this behavior:
+```javascript
+function test() {
+    console.log(this); // What does `this` refer to?
+}
+
+const debouncedTest = debounce(test, 1000);
+
+debouncedTest(); // What will be logged?
+```
+- If run in the browser globally, `this` will be `window`.
+- If run in strict mode (`'use strict'`), `this` will be `undefined`.
+
+### Conclusion:
+- `this` inside `debounce` does **not** refer to `debouncedFetch`.  
+- It depends on **how** `debouncedFetch` is called.  
+- Using `.apply(context, args)` ensures that `fetchProducts` gets the correct `this` value when executed inside `setTimeout`.
+
+
+
+
+
+Let's break this down with an example where **not using `apply()` or `call()`** leads to an issue.
+
+### **Example Without `.apply()` or `.call()`**
+#### **Scenario: Calling a method from an object**
+```javascript
+function debounce(fn, delay) {
+    let timeoutId;
+    
+    return function (...args) {
+        const context = this; // Capturing `this`
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => fn(args), delay); // ❌ Without `.apply(context, args)`
+    };
+}
+
+const obj = {
+    value: 42,
+    debouncedMethod: debounce(function () {
+        console.log(this.value);
+    }, 1000)
+};
+
+// Calling method
+obj.debouncedMethod();
+```
+
+#### **Expected Behavior (If `this` is preserved correctly)**  
+We expect `console.log(this.value);` to print `42` after 1 second.
+
+
+
+#### **Actual Behavior (Issue)**
+- The `setTimeout` function executes `fn(args)`, but it doesn't preserve `this`.
+- In JavaScript, **`setTimeout` runs the function in the global context (`window` in browsers or `undefined` in strict mode)**.
+- So, when `fn(args)` executes:
+  - `this.value` becomes `undefined` because `this` now refers to `window` (or `undefined` in strict mode).
+- **It will log:**  
+  ```javascript
+  undefined
+  ```
+  instead of `42`.
+
+---
+
+### **Example With `.apply()` (Fixing the Issue)**
+```javascript
+function debounce(fn, delay) {
+    let timeoutId;
+    
+    return function (...args) {
+        const context = this; // Capturing `this`
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => fn.apply(context, args), delay); // ✅ Using `.apply()`
+    };
+}
+
+const obj = {
+    value: 42,
+    debouncedMethod: debounce(function () {
+        console.log(this.value);
+    }, 1000)
+};
+
+// Calling method
+obj.debouncedMethod();
+```
+/**
+ * @param {Function} func
+ * @param {number} wait
+ * @return {Function}
+ */
+export default function debounce(func, wait = 0) {
+  let timeoutID = null;
+  return function (...args) {
+    // Keep a reference to `this` so that
+    // func.apply() can access it.
+    const context = this;
+    clearTimeout(timeoutID);
+
+    timeoutID = setTimeout(function () {
+      timeoutID = null; // Not strictly necessary but good to do this.
+      func.apply(context, args);
+    }, wait);
+  };
+}
+
+
+#### **Expected Output (Correct Behavior)**
+Now, after 1 second, **it correctly logs `42`**, because:
+- `fn.apply(context, args)` explicitly tells JavaScript to call `fn` with `this = context`.
+- Since `context` was set to `obj`, `this.value` correctly refers to `42`.
+
+---
+
+### **Summary: Why `.apply()` or `.call()` is Needed**
+If you don't use `.apply()` or `.call()`, then inside `setTimeout`:
+1. `this` will **not** refer to the original object (`obj`).
+2. Instead, `this` will default to `window` (or `undefined` in strict mode).
+3. The function (`fn`) will execute, but `this.value` will be `undefined`.
+
+Using `.apply(context, args)` ensures that when `fn` is finally executed, it retains the correct `this` reference from the original call.
+
+Would you like more variations of this example? 🚀
+
+/**
+ * @param {Function} func
+ * @param {number} wait
+ * @return {Function}
+ */
+export default function debounce(func, wait) {
+  
+  let id;
+
+  return function(...args){
+    let context = this 
+    clearTimeout(id) 
+    // id = setTimeout(()=> func(...args), wait)
+      id = setTimeout(()=> func.call(context, ...args), wait)
+
+    
+  }
+}
+
+
+
 
 
 Below is a modified version of your code that adds a few more asynchronous tasks (a Promise and a setTimeout) to help illustrate how synchronous code, microtasks (like the continuation after an `await` or a `.then()` callback), and macrotasks (like a `setTimeout`) are executed in order:
@@ -1431,3 +1691,255 @@ console.log(p1.greet === p2.greet); // false (different function instances)
 ✅ Use **instance-specific methods** when the method logic might change per object (more isolated).  
 
 For large-scale applications, **prototype-based methods are preferred** to optimize memory usage. Would you like an example showing real-world usage? 🚀
+
+
+
+
+
+
+
+Throttling =>
+
+/**
+ * @callback func
+ * @param {number} wait
+ * @return {Function}
+ */
+export default function throttle(func, wait) {
+  let timeout = null 
+
+
+  return function(...args){
+
+    if(!timeout){
+      func.apply(this, args) 
+    timeout = setTimeout(()=> {
+      timeout = null
+
+    }, wait)
+
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+Own Implemetation of .call method in js=>
+
+Ah, I see! You want to implement your own version of `call` in JavaScript (like `Function.prototype.call`). You can do this by adding a `myCall` method to `Function.prototype`. Here's how:
+
+### Custom `myCall` Implementation:
+```javascript
+Function.prototype.myCall = function (context, ...args) {
+  // If context is null or undefined, set it to global object (window in browser, globalThis in Node.js)
+  context = context || globalThis;
+
+  // Create a unique property on the context to avoid overwriting existing properties
+  const fnSymbol = Symbol();
+
+  // Assign 'this' (the function being called) to the unique property
+  context[fnSymbol] = this;
+
+  // Call the function with the provided arguments
+  const result = context[fnSymbol](...args);
+
+  // Clean up: Remove the property from the context
+  delete context[fnSymbol];
+
+  return result;
+};
+
+// Example usage:
+function multiplyAge(multiplier = 1) {
+  return this.age * multiplier;
+}
+
+const mary = { age: 21 };
+const john = { age: 42 };
+
+console.log(multiplyAge.myCall(mary)); // 21
+console.log(multiplyAge.myCall(john, 2)); // 84
+```
+
+### Explanation:
+1. If no `context` is provided, default to `globalThis`.
+2. Create a unique symbol (`fnSymbol`) to avoid property name collisions.
+3. Assign the function (`this`) to the `context` object.
+4. Call the function using `context[fnSymbol](...args)`.
+5. Delete the temporary property to clean up.
+
+Would you like to implement `apply` and `bind` as well?
+
+
+
+
+Here’s how you can implement `myApply` and `myBind` similar to `myCall`:  
+
+---
+
+### **1️⃣ `myApply` Implementation**  
+`apply` is similar to `call`, but it takes arguments as an array.  
+
+```javascript
+Function.prototype.myApply = function (context, argsArray = []) {
+  // Ensure context is an object or default to globalThis
+  context = context || globalThis;
+
+  // Create a unique key
+  const fnSymbol = Symbol();
+  context[fnSymbol] = this; // "this" refers to the function being called
+
+  // Call the function with spread arguments
+  const result = context[fnSymbol](...argsArray);
+
+  // Cleanup
+  delete context[fnSymbol];
+
+  return result;
+};
+
+// Example usage:
+function multiplyAge(multiplier = 1) {
+  return this.age * multiplier;
+}
+
+const mary = { age: 21 };
+const john = { age: 42 };
+
+console.log(multiplyAge.myApply(mary, [])); // 21
+console.log(multiplyAge.myApply(john, [2])); // 84
+```
+
+---
+
+### **2️⃣ `myBind` Implementation**  
+`bind` returns a new function with `this` permanently set to the provided `context`.  
+
+```javascript
+Function.prototype.myBind = function (context, ...args) {
+  const func = this; // "this" refers to the function being bound
+
+  return function (...newArgs) {
+    return func.myCall(context, ...args, ...newArgs); // Use myCall internally
+  };
+};
+
+// Example usage:
+function multiplyAge(multiplier = 1) {
+  return this.age * multiplier;
+}
+
+const mary = { age: 21 };
+
+const boundMultiply = multiplyAge.myBind(mary);
+console.log(boundMultiply()); // 21
+
+const boundMultiplyBy2 = multiplyAge.myBind(mary, 2);
+console.log(boundMultiplyBy2()); // 42
+```
+
+---
+
+### **🔹 Summary of Custom Methods**
+| Method | Arguments | Returns |
+|---------|-----------|---------|
+| `myCall` | `context, ...args` | Calls function immediately with `this = context` |
+| `myApply` | `context, argsArray` | Calls function immediately with `this = context`, arguments as an array |
+| `myBind` | `context, ...args` | Returns a new function with `this = context`, callable later |
+
+---
+
+Now you have `myCall`, `myApply`, and `myBind` implemented! Let me know if you want an even deeper breakdown.
+
+
+
+
+
+
+
+Yes! That's exactly right. Let’s break it down again to make it super clear.  
+
+---
+
+### **🔹 `call` vs. `apply` in Terms of Rest and Spread Operators**  
+
+#### **`call` Implementation**
+```javascript
+Function.prototype.myCall = function (context, ...args) { 
+  context = context || globalThis;
+  const fnSymbol = Symbol();
+  context[fnSymbol] = this; 
+
+  const result = context[fnSymbol](...args); // Spread operator to pass individual arguments
+  delete context[fnSymbol];
+
+  return result;
+};
+```
+✅ **Rest Operator (`...args`)** in function parameters:   
+- `args` collects all additional arguments into an array.  
+✅ **Spread Operator (`...args`)** in function call:  
+- It expands the array into individual arguments when calling the function.  
+
+---
+
+#### **`apply` Implementation**
+```javascript
+Function.prototype.myApply = function (context, argsArray = []) { 
+  context = context || globalThis;
+  const fnSymbol = Symbol();
+  context[fnSymbol] = this; 
+
+  const result = context[fnSymbol](...argsArray); // Spread operator to pass individual arguments
+  delete context[fnSymbol];
+
+  return result;
+};
+```
+✅ No need for a **rest operator** in function parameters since `apply` already receives an array.  
+✅ **Spread Operator (`...argsArray`)** in function call:  
+- It expands the existing array into individual arguments.
+
+---
+
+### **🔹 Final Comparison**
+| Feature | `call(context, arg1, arg2, ...)` | `apply(context, [arg1, arg2, ...])` |
+|---------|----------------------------------|------------------------------------|
+| **Input** | Individual arguments | Arguments as an array |
+| **Rest Operator** | `(...args)` to collect arguments into an array | Not needed |
+| **Spread Operator** | `(...args)` to expand arguments in function call | `(...argsArray)` to expand array in function call |
+
+---
+
+### **💡 Example to Show the Difference**
+```javascript
+function showDetails(city, country) {
+  console.log(`${this.name} is from ${city}, ${country}.`);
+}
+
+const person = { name: "John" };
+
+showDetails.myCall(person, "New York", "USA");
+// Same as: showDetails("New York", "USA")
+
+showDetails.myApply(person, ["New York", "USA"]);
+// Same as: showDetails("New York", "USA")
+```
+Both give the same result:  
+```
+John is from New York, USA.
+```
+---
+
+### **🔹 Summary**
+- **In `call`, we use the rest operator (`...args`) to collect arguments into an array.**  
+- **In `apply`, we already receive an array, so no need for the rest operator.**  
+- **In both cases, we use the spread operator (`...args` or `...argsArray`) when calling the function.**  
+
+Would you like a breakdown of `bind` as well?
