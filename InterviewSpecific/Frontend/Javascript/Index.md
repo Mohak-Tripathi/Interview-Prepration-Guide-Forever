@@ -1943,3 +1943,120 @@ John is from New York, USA.
 - **In both cases, we use the spread operator (`...args` or `...argsArray`) when calling the function.**  
 
 Would you like a breakdown of `bind` as well?
+
+
+
+
+
+
+
+
+
+
+Here's how you can implement your own version of the `reduce` function, called `myReduce`:  
+
+---
+
+### **🔹 Understanding `reduce`**
+The `reduce` method executes a **callback function** on each element of an array, resulting in a **single accumulated value**.  
+
+#### **Example of Native `reduce`**
+```javascript
+const numbers = [1, 2, 3, 4];
+
+const sum = numbers.reduce((acc, curr) => acc + curr, 0);
+console.log(sum); // 10
+```
+---
+
+### **🔹 Implementing `myReduce`**
+```javascript
+Array.prototype.myReduce = function (callback, initialValue) {
+  // Ensure the array is not empty if no initialValue is provided
+  if (this.length === 0 && initialValue === undefined) {
+    throw new TypeError("Reduce of empty array with no initial value");
+  }
+
+  let accumulator = initialValue !== undefined ? initialValue : this[0]; 
+  let startIndex = initialValue !== undefined ? 0 : 1; 
+
+  for (let i = startIndex; i < this.length; i++) {
+    accumulator = callback(accumulator, this[i], i, this);
+  }
+
+  return accumulator;
+};
+```
+---
+
+### **🔹 Explanation**
+1. **Check for an empty array**  
+   - If `initialValue` is `undefined` and the array is empty, throw an error.
+   
+2. **Initialize `accumulator`**  
+   - If `initialValue` is provided, use it.  
+   - Otherwise, use the first element (`this[0]`).  
+
+3. **Determine the starting index**  
+   - If `initialValue` exists, start at index `0`.  
+   - If not, start at index `1` since `this[0]` is already used as the initial value.  
+
+4. **Iterate through the array**  
+   - Apply the `callback` function on each element, updating `accumulator`.  
+   - Pass `(accumulator, currentValue, index, array)` to the callback.  
+
+5. **Return the final accumulated value**.  
+
+---
+
+### **🔹 Example Usage of `myReduce`**
+```javascript
+const numbers = [1, 2, 3, 4];
+
+const sum = numbers.myReduce((acc, curr) => acc + curr, 0);
+console.log(sum); // 10
+
+const product = numbers.myReduce((acc, curr) => acc * curr, 1);
+console.log(product); // 24
+
+const maxNumber = numbers.myReduce((acc, curr) => (acc > curr ? acc : curr));
+console.log(maxNumber); // 4
+```
+
+---
+
+### **🔹 Summary**
+✅ Works the same as the native `reduce` method.  
+✅ Supports an `initialValue`.  
+✅ Handles an empty array properly.  
+
+Let me know if you'd like any modifications or deeper explanations! 🚀
+
+
+
+More detailed impleentation of myReduce function =>
+```
+/**
+ * @template T, U
+ * @param {(previousValue: U, currentValue: T, currentIndex: number, array: T[]) => U} callbackFn
+ * @param {U} [initialValue]
+ * @return {Array<U>}
+ */
+Array.prototype.myReduce = function (callbackFn, initialValue) {
+  
+  if(this.length == 0 && initialValue == undefined){
+    throw new TypeError("Array cannot be empty")
+  }
+
+  let accumulator = initialValue === undefined ? this[0] : initialValue
+  let startIndex = initialValue === undefined ? 1 : 0
+
+  for(let i = startIndex; i<this.length; i++){
+     if (!this.hasOwnProperty(i)) continue; // Skip sparse elements
+
+    accumulator = callbackFn(accumulator, this[i], i, this)
+  }
+  return accumulator
+
+};
+```
