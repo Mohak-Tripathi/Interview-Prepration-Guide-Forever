@@ -1,6 +1,6 @@
 
 ### **0 Optimize Docker Setup**  
-✅ **Dockerizing the entire application:** to avoid "it works in my application". 
+✅ **Dockerizing the entire application:** to avoid "it works in my application"..
 
 ### **1️⃣ Optimize Docker Setup**  
 ✅ **Multi-stage builds:** Reduce the final image size for production.  
